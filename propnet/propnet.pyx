@@ -1,12 +1,26 @@
 # cython: profile=True
-from .node import node_types, transition_split, Node
-from .constants import (AND, OR, PROPOSITION, TRANSITION, NOT, CONSTANT,
-                        UNKNOWN, init, base, input, legal, goal, terminal,
-                        other)
+from node import node_types, transition_split, Node
+AND = 1
+OR = 2
+PROPOSITION = 3
+TRANSITION = 4
+NOT = 5
+CONSTANT = 6
+UNKNOWN = 7
+
+MAX_FAN_OUT_SIZE = 256 * 256
+
+init = "init"
+base = "base"
+input = "input"
+legal = "legal"
+goal = "goal"
+terminal = "terminal"
+other = "other"
 import os
 import importlib
 from collections import defaultdict
-from .persistent_array import PersistentArray
+from persistent_array import PersistentArray
 
 
 def _split_gdl(gdl):
@@ -171,6 +185,8 @@ cdef class Propnet:
         self.do_step(data, actions, init)
 
     cpdef do_step(self, data, actions=set(), init=False):
+
+        print(actions)
 
         actions = {self.legal_to_input[x] for x in actions}
 
