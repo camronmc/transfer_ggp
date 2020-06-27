@@ -1,3 +1,6 @@
+import sys
+sys.path.insert(1, '/Users/Cameron/Desktop/transfer_ggp')
+
 from b1 import B1Node, do_game
 from propnet.propnet import load_propnet
 from model import Model
