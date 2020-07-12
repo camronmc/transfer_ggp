@@ -6,17 +6,17 @@ import numpy as np
 import random
 import time
 
-game = 'pacman3psmall'
+# game = 'pacman3psmall'
 # game = 'breakthroughSmall'
-# game = 'connect4'
+game = 'connect4'
 # game = 'babel'
 models_base = 'models/'
-models_base = '/home/adrian/honours-models/'
+# models_base = '/home/adrian/honours-models/'
 # models = ['connect4/connect4-z.5/connect4-z.5']
-models = ['pacman3p/pacman3psmall-z.5']
+# models = ['pacman3p/pacman3psmall-z.5']
 # models = [game+'-z.5']
 # models = [game+'-init']
-# models = [game]
+models = [game]
 
 
 TIME_BASED = True
@@ -88,6 +88,7 @@ def eval_game(b1_N, mcts_N, model, X, rand):
     allmctsg = []
     allmctsp = []
     for i in range(X):
+        print("eval: " + str(i) + " of " + str(X))  
         b1score, mctsscore = run_game(role_a, role_b, b1_N, mcts_N, model, rand)
         allb1g.append(b1score)
         allmctsp.append(mctsscore)
@@ -106,7 +107,8 @@ def eval_game(b1_N, mcts_N, model, X, rand):
 
 
 
-checkpoints = list(range(0, 1501, 50))[1:]
+# checkpoints = list(range(0, 1501, 50))[1:]
+checkpoints = [6000]
 # checkpoints = list(range(1050, 5001, 50))
 data, propnet = load_propnet(game)
 model = Model(propnet)
@@ -136,6 +138,7 @@ for model_name in models:
         with open('resultssss.csv', 'a') as f:
             f.write(f'{model_name},{ckpt},{results}\n')
 exit(0)
+
 role_a = ('builder1', 'builder2')
 role_b = ('builder3',)
 

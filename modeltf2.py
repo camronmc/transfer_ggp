@@ -15,7 +15,7 @@ REPLAY_SIZE = 20000
 
 
 class Model:
-    def __init__(self, propnet, game):
+    def __init__(self, propnet, game, load_only=False):
         self.game = game
         self.roles = propnet.roles
         self.legal_for = propnet.legal_for
@@ -24,7 +24,8 @@ class Model:
                             for role, actions in propnet.legal_for.items()}
         self.num_inputs = len(propnet.propositions)
         self.replay_buffer = collections.deque(maxlen=REPLAY_SIZE)
-        self.create_model()
+        if not load_only:
+            self.create_model()
         self.eval_time = self.train_time = 0
         self.losses = []
 
@@ -107,15 +108,17 @@ class Model:
         )
 
         ##set up callback/saver
-        path = os.path.join('models', self.game)
-        pathlib.Path(path).mkdir(parents=True, exist_ok=True)
+        self.path = os.path.join('models', self.game)
+        pathlib.Path(self.path).mkdir(parents=True, exist_ok=True)
+        # print(path)
 
-        self.callback = tf.keras.callbacks.ModelCheckpoint(
-                            filepath=path, 
-                            verbose=1, 
-                            save_weights_only=True,
-                            save_freq=5
-                            )
+        # self.callback = tf.keras.callbacks.ModelCheckpoint(
+        #                     filepath=path, 
+        #                     verbose=1, 
+        #                     save_weights_only=True,
+        #                     period=50,
+        #                     save_best_only=False
+        #                     )
 
     def train(self, epochs=5, batchsize=128):
         if batchsize > len(self.replay_buffer):
@@ -176,9 +179,13 @@ class Model:
         #     for i, pr in probs[role].items():
         #         print(self.id_to_move[i].move_gdl, '%.3f' % pr)
 
-    def load(self, path):
-        self.saver.restore(self.sess, path)
-        print('Loaded model from', path)
+    def save(self, game, i):
+        modelName = self.path+'/'+game+"-"+str(i)+'.h5'
+        print("saving model: " + modelName)
+        self.model.save(modelName, overwrite=False)
+
+    def load(self, path, with_training=True):
+        self.model = tf.keras.models.load_model(path, compile=with_training)
 
     def load_most_recent(self, game):
         models = os.path.join(pathlib.Path(__file__).parent, 'models')

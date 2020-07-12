@@ -7,7 +7,7 @@ TRANSITION = 4
 NOT = 5
 CONSTANT = 6
 UNKNOWN = 7
-
+CAM=74
 MAX_FAN_OUT_SIZE = 256 * 256
 
 init = "init"
@@ -44,7 +44,7 @@ def split_gdl(gdl):
     return filter(None, _split_gdl(gdl))
 
 
-def make_propnet(gdl, name):
+def make_propnet(gdl, name): 
     fn = os.path.join('rulesheets', name + '.kif')
     with open(fn, 'w') as f:
         f.write(gdl)
@@ -61,7 +61,7 @@ def convert_to_propnet(filename):
     base = os.path.basename(filename).replace('.kif', '').replace('.gdl', '')
     out_fn = os.path.join('games', base+'.py')
     out_fn = os.path.abspath(out_fn)
-    os.chdir('/home/adrian/ggplib/ggp-base/bin/')
+    os.chdir('/Users/Cameron/Desktop/transfer_ggp/rulesheets')
     os.system('java -cp . -XX:+UseSerialGC -Xmx8G propnet_convert.Convert %s %s' % (filename, out_fn))
     return load_propnet(base)
 
@@ -185,8 +185,6 @@ cdef class Propnet:
         self.do_step(data, actions, init)
 
     cpdef do_step(self, data, actions=set(), init=False):
-
-        print(actions)
 
         actions = {self.legal_to_input[x] for x in actions}
 

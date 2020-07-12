@@ -90,21 +90,21 @@ def average(scores, q, z):
 def do_game(curl, propnet, model, z=1, N=300):
     cur = curl[0]
     states = []
-    board = [list('.'*8) for i in range(6)]
+    # board = [list('.'*8) for i in range(6)]
     for step in range(1000):
-        print(*(''.join(b) for b in board[::-1]), sep='\n')
-        model.print_eval(propnet.get_state(cur.data))
+        # print(*(''.join(b) for b in board[::-1]), sep='\n')
+        # model.print_eval(propnet.get_state(cur.data))
         cur.make_root()
         start = time.time()
         for i in range(N):
             simulation(cur)
         probs = cur.get_probs(1)
-        print('Counts were:')
-        for role, counts in probs.items():
-            print('For', role)
-            for id, count in counts.items():
-                print(propnet.id_to_move[id].move_role, propnet.id_to_move[id].move_gdl, count)
-            print('New expected return:', cur.q[role]/cur.count)
+        # print('Counts were:')
+        # for role, counts in probs.items():
+            # print('For', role)
+            # for id, count in counts.items():
+            #     print(propnet.id_to_move[id].move_role, propnet.id_to_move[id].move_gdl, count)
+            # print('New expected return:', cur.q[role]/cur.count)
         # if any(sum(x.values()) < 10 for x in probs.values()):
             # import pdb; pdb.set_trace()
         formatted_probs = {}
@@ -130,19 +130,19 @@ def do_game(curl, propnet, model, z=1, N=300):
         # cur = cur.children[tuple(moves)]
         cur = cur.get_or_make_child(tuple(moves))
         curl[0] = cur
-        print('Moves were:')
-        for move in propnet.legal:
-            if move.id in moves and move.move_gdl.strip() != 'noop':
-                print(move.move_role, move.move_gdl)
-                if 'drop' in move.move_gdl:
-                    col = int(move.move_gdl.split()[2]) - 1
-                    for i in range(len(board)):
-                        if board[i][col] == '.':
-                            board[i][col] = move.move_role[0]
-                            break
-        print('Play took %.4f seconds' % (time.time() - start))
+        # print('Moves were:')
+        # for move in propnet.legal:
+        #     if move.id in moves and move.move_gdl.strip() != 'noop':
+        #         # print(move.move_role, move.move_gdl)
+        #         if 'drop' in move.move_gdl:
+        #             col = int(move.move_gdl.split()[2]) - 1
+        #             for i in range(len(board)):
+        #                 if board[i][col] == '.':
+        #                     board[i][col] = move.move_role[0]
+        #                     break
+        # print('Play took %.4f seconds' % (time.time() - start))
         if cur.terminal:
-            print(*(''.join(b) for b in board[::-1]), sep='\n')
+            # print(*(''.join(b) for b in board[::-1]), sep='\n')
             break
     scores = cur.scores
     for s, p, q in states:

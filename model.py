@@ -103,8 +103,13 @@ class Model:
             self.eval_time += time.time() - start
             all_qs[role] = q[0][0]
             all_probs[role] = {}
+            # print("self.legal_for is:", self.legal_for[role])
+            # print("prob preds is:", probs[0])
             for prob, inp in zip(probs[0], self.legal_for[role]):
+                # print(prob, inp)
                 all_probs[role][inp.id] = prob
+
+        # print(all_probs)
         return all_probs, all_qs
 
     def print_eval(self, state):
