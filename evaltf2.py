@@ -5,10 +5,11 @@ from modeltf2 import Model
 import numpy as np
 import random
 import time
+import sys
 
 # game = 'pacman3psmall'
 # game = 'breakthroughSmall'
-game = 'connect4'
+game = sys.argv[1]
 # game = 'babel'
 models_base = 'models/'
 # models_base = '/home/adrian/honours-models/'
@@ -48,9 +49,9 @@ def run_game(b1_role, mcts_role, b1_N, mcts_N, model, rand=0):
     print(f'mcts ({" ".join(mcts_role)}), N={mcts_N}')
     curb1 = B1Node(propnet, data, model=model)
     curmcts = MCTSNode(propnet, data)
-    # board = [list('.'*8) for i in range(6)]
+    board = [list('.'*8) for i in range(6)]
     for step in range(1000):
-        # print(*(''.join(b) for b in board[::-1]), sep='\n')
+        print(*(''.join(b) for b in board[::-1]), sep='\n')
         legal = curb1.propnet.legal_moves_dict(curb1.data)
         b1_moves = choose_move(curb1, b1_role, b1_N, legal, step < rand)
         mcts_moves = choose_move(curmcts, mcts_role, mcts_N, legal, step < rand)
@@ -62,14 +63,14 @@ def run_game(b1_role, mcts_role, b1_N, mcts_N, model, rand=0):
         for move in propnet.legal:
             if move.id in moves and move.move_gdl.strip() != 'noop':
                 print(move.move_role, move.move_gdl)
-                # if 'drop' in move.move_gdl:
-                    # col = int(move.move_gdl.split()[2]) - 1
-                    # for i in range(len(board)):
-                        # if board[i][col] == '.':
-                            # board[i][col] = move.move_role[0]
-                            # break
+                if 'drop' in move.move_gdl:
+                    col = int(move.move_gdl.split()[2]) - 1
+                    for i in range(len(board)):
+                        if board[i][col] == '.':
+                            board[i][col] = move.move_role[0]
+                            break
         if curb1.terminal:
-            # print(*(''.join(b) for b in board[::-1]), sep='\n')
+            print(*(''.join(b) for b in board[::-1]), sep='\n')
             break
     print('Results:', curb1.scores)
     return (
@@ -107,26 +108,26 @@ def eval_game(b1_N, mcts_N, model, X, rand):
 
 
 
-checkpoints = list(range(0, 9000, 50))[1:]
-# checkpoints = [6000]
+# checkpoints = list(range(6000, 9000, 50))[0:]
+checkpoints = [9950]
 # checkpoints = list(range(1050, 5001, 50))
 data, propnet = load_propnet(game)
 model = Model(propnet, game)
 print(len(propnet.propositions))
 print(len(propnet.nodes))
 
-if game == 'breakthroughSmall':
-    role_a = ('black',)
-    role_b = ('white',)
-elif game == 'connect4':
-    role_a = ('red',)
-    role_b = ('white',)
-elif game.startswith('pacman3p'):
-    role_a = ('inky', 'blinky')
-    role_b = ('pacman',)
-elif game == 'babel':
-    role_a = ('builder1', 'builder2', 'builder3')
-    role_b = ()
+# if game == 'breakthroughSmall':
+#     role_a = ('black',)
+#     role_b = ('white',)
+# elif game == 'connect4':
+role_a = ('red',)
+role_b = ('white',)
+# elif game.startswith('pacman3p'):
+#     role_a = ('inky', 'blinky')
+#     role_b = ('pacman',)
+# elif game == 'babel':
+#     role_a = ('builder1', 'builder2', 'builder3')
+#     role_b = ()
 
 for model_name in models:
     for ckpt in checkpoints:
@@ -135,7 +136,7 @@ for model_name in models:
         res = eval_game(2, 2, model, 25, 2)
         print(*res)
         results = ",".join(map(str, res))
-        with open('results'+model_name+'.csv', 'a') as f:
+        with open('results'+model_name+'2.csv', 'a') as f:
             f.write(f'{model_name},{ckpt},{results}\n')
 exit(0)
 

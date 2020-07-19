@@ -36,7 +36,9 @@ class Model:
         vars = self.model.trainable_variables
         self.C = 0.0001
         lossL2 = tf.add_n([tf.nn.l2_loss(v) for v in vars if 'bias' not in v.name]) * self.C
-        loss += lossL2
+        # this was being added twice
+        print("lossL2:", lossL2, lossL2/2)
+        loss += lossL2/2
 
         return loss
     
@@ -125,32 +127,34 @@ class Model:
             print('Skipping as replay buffer too small')
             return
         sum_loss = 0
-        sample = random.sample(self.replay_buffer,batchsize)
 
-        inputs = np.array([x[0] for x in sample])
+        for e in range(epochs):
+            sample = random.sample(self.replay_buffer,batchsize)
 
-        tqs = dict()
-        logits = dict()
-        for role in self.roles:
-            tqs[role] = np.empty((len(sample), 1))
-            logits[role] = np.empty((len(sample), self.num_actions[role]))
-            for i, x in enumerate(sample):
-                tqs[role][i] = x[2][role]
-                logits[role][i] = x[1][role]
+            inputs = np.array([x[0] for x in sample])
 
-        self.model.fit(
-            {"input" : inputs},
-            {
-                "q_"+self.roles[0]      : tqs[self.roles[0]],
-                "q_"+self.roles[1]      : tqs[self.roles[1]],
-                "logits_"+self.roles[0] : logits[self.roles[0]],
-                "logits_"+self.roles[1] : logits[self.roles[1]],
-                "probs_"+self.roles[0]  : logits[self.roles[0]],
-                "probs_"+self.roles[1]  : logits[self.roles[1]]
-            },
-            epochs=epochs,
-            batch_size=batchsize
-        )
+            tqs = dict()
+            logits = dict()
+            for role in self.roles:
+                tqs[role] = np.empty((len(sample), 1))
+                logits[role] = np.empty((len(sample), self.num_actions[role]))
+                for i, x in enumerate(sample):
+                    tqs[role][i] = x[2][role]
+                    logits[role][i] = x[1][role]
+
+            sum_loss += self.model.train_on_batch(
+                inputs,
+                y = {
+                    "q_"+self.roles[0]      : tqs[self.roles[0]],
+                    "q_"+self.roles[1]      : tqs[self.roles[1]],
+                    "logits_"+self.roles[0] : logits[self.roles[0]],
+                    "logits_"+self.roles[1] : logits[self.roles[1]],
+                    "probs_"+self.roles[0]  : logits[self.roles[0]],
+                    "probs_"+self.roles[1]  : logits[self.roles[1]]
+                },
+            )[0]
+
+        print(sum_loss/epochs)
 
     def add_sample(self, state, probs, scores):
         self.replay_buffer.append((state, probs, scores))
@@ -158,8 +162,8 @@ class Model:
     def eval(self, state):
         state = np.array(state)
         state = state.reshape(1,self.num_inputs)
-        predictions = self.model.predict(state)
-
+        predictions = self.model.predict_on_batch(state)
+    
         # outputs=[self.outputs[roles] for roles in self.roles]
         # (q, logits, probs) for each role
         all_qs= dict()

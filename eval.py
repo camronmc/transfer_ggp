@@ -10,7 +10,7 @@ import time
 # game = 'breakthroughSmall'
 game = 'connect4'
 # game = 'babel'
-models_base = 'models/'
+models_base = 'models_ad/'
 # models_base = '/home/adrian/honours-models/'
 # models = ['connect4/connect4-z.5/connect4-z.5']
 # models = ['pacman3p/pacman3psmall-z.5']
@@ -48,9 +48,9 @@ def run_game(b1_role, mcts_role, b1_N, mcts_N, model, rand=0):
     print(f'mcts ({" ".join(mcts_role)}), N={mcts_N}')
     curb1 = B1Node(propnet, data, model=model)
     curmcts = MCTSNode(propnet, data)
-    # board = [list('.'*8) for i in range(6)]
+    board = [list('.'*8) for i in range(6)]
     for step in range(1000):
-        # print(*(''.join(b) for b in board[::-1]), sep='\n')
+        print(*(''.join(b) for b in board[::-1]), sep='\n')
         legal = curb1.propnet.legal_moves_dict(curb1.data)
         b1_moves = choose_move(curb1, b1_role, b1_N, legal, step < rand)
         mcts_moves = choose_move(curmcts, mcts_role, mcts_N, legal, step < rand)
@@ -62,14 +62,14 @@ def run_game(b1_role, mcts_role, b1_N, mcts_N, model, rand=0):
         for move in propnet.legal:
             if move.id in moves and move.move_gdl.strip() != 'noop':
                 print(move.move_role, move.move_gdl)
-                # if 'drop' in move.move_gdl:
-                    # col = int(move.move_gdl.split()[2]) - 1
-                    # for i in range(len(board)):
-                        # if board[i][col] == '.':
-                            # board[i][col] = move.move_role[0]
-                            # break
+                if 'drop' in move.move_gdl:
+                    col = int(move.move_gdl.split()[2]) - 1
+                    for i in range(len(board)):
+                        if board[i][col] == '.':
+                            board[i][col] = move.move_role[0]
+                            break
         if curb1.terminal:
-            # print(*(''.join(b) for b in board[::-1]), sep='\n')
+            print(*(''.join(b) for b in board[::-1]), sep='\n')
             break
     print('Results:', curb1.scores)
     return (
@@ -108,7 +108,7 @@ def eval_game(b1_N, mcts_N, model, X, rand):
 
 
 # checkpoints = list(range(0, 1501, 50))[1:]
-checkpoints = [6000]
+checkpoints = [5100]
 # checkpoints = list(range(1050, 5001, 50))
 data, propnet = load_propnet(game)
 model = Model(propnet)

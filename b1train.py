@@ -12,6 +12,7 @@ game = sys.argv[1]
 
 data, propnet = load_propnet(game)
 model = Model(propnet)
+# model.load('models/connect4_adrian/step-006000.ckpt')
 cur = [None]
 
 set_pauser({
@@ -20,6 +21,7 @@ set_pauser({
     'propnet': propnet,
 })
 
+model.save(game,0)
 start = time.time()
 for i in range(50000):
     cur[0] = B1Node(propnet, data, model=model)
@@ -31,6 +33,6 @@ for i in range(50000):
     model.train(epochs=10)
     print("took ", time.time()-start_train, "seconds to train")
     if i and i % 50 == 0:
-        # model.save(game, i)
+        model.save(game, i)
         with open(f'models/times-{game}', 'a') as f:
             f.write(f'{i} {time.time()-start}\n')

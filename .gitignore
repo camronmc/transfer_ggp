@@ -3,3 +3,5 @@
 models/*
 *.out
 *.txt
+models_ad/*
+model_adrian/*

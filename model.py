@@ -13,7 +13,7 @@ REPLAY_SIZE = 20000
 
 
 class Model:
-    def __init__(self, propnet):
+    def __init__(self, propnet, create=True):
         self.roles = propnet.roles
         self.legal_for = propnet.legal_for
         self.id_to_move = propnet.id_to_move
@@ -21,7 +21,8 @@ class Model:
                             for role, actions in propnet.legal_for.items()}
         self.num_inputs = len(propnet.propositions)
         self.replay_buffer = collections.deque(maxlen=REPLAY_SIZE)
-        self.create_model()
+        if create:
+            self.create_model()
         self.create_trainer()
         self.sess = tf.Session(
             config=tf.ConfigProto(inter_op_parallelism_threads=1)
@@ -144,8 +145,11 @@ class Model:
             sum_loss += loss
         self.losses.append(sum_loss/epochs)
 
-    def save(self, game, i):
-        path = os.path.join('models', game)
+    def save(self, game, i, transfer=False, from_game=""):
+        if transfer:
+            path = os.path.join('models_transfer', game, 'from', from_game)
+        else:
+            path = os.path.join('models_ad', game)
         pathlib.Path(path).mkdir(parents=True, exist_ok=True)
         save_path = self.saver.save(self.sess, path + '/step-%06d.ckpt' % i)
         print('Saved model to', save_path)
