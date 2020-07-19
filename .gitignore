@@ -5,3 +5,6 @@ models/*
 *.txt
 models_ad/*
 model_adrian/*
+models_transfer/*
+c4_out
+adrianlosstest

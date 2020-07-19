@@ -21,8 +21,7 @@ class Model:
                             for role, actions in propnet.legal_for.items()}
         self.num_inputs = len(propnet.propositions)
         self.replay_buffer = collections.deque(maxlen=REPLAY_SIZE)
-        if create:
-            self.create_model()
+        self.create_model()
         self.create_trainer()
         self.sess = tf.Session(
             config=tf.ConfigProto(inter_op_parallelism_threads=1)

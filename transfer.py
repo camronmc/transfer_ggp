@@ -31,7 +31,7 @@ if  (len(old_prop.roles) == len(new_prop.roles) and
     len(old_prop.propositions) == len(new_prop.propositions)):
 
     model = Model(new_prop, create=False)
-    model.load('./models_ad/'+game+'/step-%6d.ckpt'%ckpt)
+    model.load('./models_ad/' + from_game+ '/step-%06d.ckpt' % int(ckpt))
 
 else:
 
@@ -44,21 +44,21 @@ cur = [None]
 set_pauser({
     'cur': cur,
     'model': model,
-    'propnet': propnet,
+    'propnet': new_prop,
 })
 
-model.save(game,0)
+model.save(to_game,0,transfer=True,from_game=from_game)
 start = time.time()
 for i in range(50000):
-    cur[0] = B1Node(propnet, data, model=model)
+    cur[0] = B1Node(new_prop, data, model=model)
     print('Game number', i)
     start_game = time.time()
-    do_game(cur, propnet, model, z=0.5)
+    do_game(cur, new_prop, model, z=0.5)
     print("took ", time.time()-start_game, "seconds to play game")
     start_train = time.time()
     model.train(epochs=10)
     print("took ", time.time()-start_train, "seconds to train")
     if i and i % 50 == 0:
-        model.save(game, i)
-        with open(f'models/times-{game}', 'a') as f:
+        model.save(to_game, i, transfer=True, from_game=from_game)
+        with open(f'models_transfer/times-{to_game}', 'a') as f:
             f.write(f'{i} {time.time()-start}\n')
