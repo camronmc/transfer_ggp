@@ -7,6 +7,8 @@ from model import Model
 from utils.pauser import set_pauser
 import time
 import sys
+import tensorflow as tf
+import re
 
 if len(sys.argv) < 4:
     print("Usage: transfer.py <base_game> <ckpt> <to_game>")
@@ -31,12 +33,19 @@ if  (len(old_prop.roles) == len(new_prop.roles) and
     len(old_prop.propositions) == len(new_prop.propositions)):
 
     model = Model(new_prop, create=False)
+
     model.load('./models_ad/' + from_game+ '/step-%06d.ckpt' % int(ckpt))
 
+    model.print_var('dense_4')
+    
 else:
 
     print("complete complex transfer")
-    ## if they dont match call a function that does the transfer
+    model = Model(new_prop, transfer=True, base_dims=[685, 342, 171, 85, 50], roles_dim=[])
+
+    model.perform_transfer('./models_ad/' + from_game+ '/step-%06d.ckpt' % int(ckpt), True)
+
+    model.print_var('dense_4')
 
 ## train
 cur = [None]

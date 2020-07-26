@@ -108,7 +108,7 @@ def eval_game(b1_N, mcts_N, model, X, rand):
 
 
 # checkpoints = list(range(0, 1501, 50))[1:]
-checkpoints = [5100]
+checkpoints = list(range(5000,7000,50))[1:]
 # checkpoints = list(range(1050, 5001, 50))
 data, propnet = load_propnet(game)
 model = Model(propnet)

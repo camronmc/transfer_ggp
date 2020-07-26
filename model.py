@@ -4,6 +4,7 @@ import random
 import pathlib
 import time
 import os
+import numpy as np
 
 NUM_PRE_LAYERS = 2
 MIN_PRE_SIZE = 50
@@ -13,7 +14,7 @@ REPLAY_SIZE = 20000
 
 
 class Model:
-    def __init__(self, propnet, create=True):
+    def __init__(self, propnet, create=True, transfer=False, base_dims=None, roles_dim=None):
         self.roles = propnet.roles
         self.legal_for = propnet.legal_for
         self.id_to_move = propnet.id_to_move
@@ -21,7 +22,10 @@ class Model:
                             for role, actions in propnet.legal_for.items()}
         self.num_inputs = len(propnet.propositions)
         self.replay_buffer = collections.deque(maxlen=REPLAY_SIZE)
-        self.create_model()
+        if transfer:
+            self.create_model_transfer(base_dims, roles_dim)
+        else:
+            self.create_model()
         self.create_trainer()
         self.sess = tf.Session(
             config=tf.ConfigProto(inter_op_parallelism_threads=1)
@@ -70,6 +74,49 @@ class Model:
             q = dense(cur, 1, activation=tf.nn.sigmoid)
             self.outputs[role] = (q, logits, probs)
 
+    def create_model_transfer(self, base_dims, roles_dim):
+        dense = tf.layers.dense
+
+        self.input = tf.placeholder(shape=[None, self.num_inputs], dtype=tf.float32, name="new_input")
+        cur = self.input
+        size = self.num_inputs
+        while size / 2 > base_dims[0]:
+            size = max(MIN_PRE_SIZE, size // 2)
+            cur = dense(cur, size, activation=tf.nn.relu, name="new_"+str(size))
+
+        tracker = 0
+        for i, s in enumerate(base_dims):
+            if i == 0:
+                cur = dense(cur, s, activation=tf.nn.relu, name="new_"+str(s))
+            else:
+                cur = dense(cur, s, activation=tf.nn.relu)
+            tracker=i
+
+        self.base_features = cur
+
+        self.outputs = {}
+        for role in self.roles:
+            cur = self.base_features
+
+            for s in roles_dim:
+                tracker+=1
+                cur = dense(cur, s, activation=tf.nn.relu)
+                size = s
+
+            #add extra layers if necessary
+            while size * 2 < self.num_actions[role]:
+                size *= 2
+                cur = dense(cur, size, activation=tf.nn.relu, name="new_act_"+str(size))
+
+            final = self.num_actions[role]
+            logits = dense(cur, final, activation=None)
+            probs = tf.nn.softmax(logits)
+            q = dense(cur, 1, activation=tf.nn.sigmoid)
+            self.outputs[role] = (q, logits, probs)
+
+    def complete_transfer(self, path):
+        return
+            
     def create_trainer(self):
         self.target = {role: (tf.placeholder(tf.float32, shape=(None, 1)),
                               tf.placeholder(tf.float32, shape=(None, self.num_actions[role])))
@@ -146,7 +193,7 @@ class Model:
 
     def save(self, game, i, transfer=False, from_game=""):
         if transfer:
-            path = os.path.join('models_transfer', game, 'from', from_game)
+            path = os.path.join('models_transfer', game + 'from' + from_game)
         else:
             path = os.path.join('models_ad', game)
         pathlib.Path(path).mkdir(parents=True, exist_ok=True)
@@ -162,3 +209,65 @@ class Model:
         path = os.path.join(models, game)
         newest = max(os.listdir(path))[:-5]
         self.load(os.path.join(path, newest))
+
+    def print_var(self, var):
+        with tf.variable_scope(var, reuse=True):
+            w = tf.get_variable("kernel")
+            print(w.eval(self.sess))
+
+    def perform_transfer(self, path, reuse_output=False):
+        reader = tf.train.NewCheckpointReader(path)
+        saved_shapes = reader.get_variable_to_shape_map()
+
+        var_names = sorted([(var.name, var.name.split(':')[0]) for
+                            var in tf.global_variables()
+                            if var.name.split(':')[0] in saved_shapes])
+        restore_vars = []
+        rearrange_vars = []
+        name2var = dict(zip(map(lambda x: x.name.split(':')[0],
+                                tf.global_variables()),
+                            tf.global_variables()))
+        with tf.variable_scope('', reuse=True):
+            for var_name, saved_var_name in var_names:
+                curr_var = name2var[saved_var_name]
+                var_shape = curr_var.get_shape().as_list()
+                if var_shape == saved_shapes[saved_var_name]:
+                    restore_vars.append(curr_var)
+                else:
+                    rearrange_vars.append(var_name)
+
+        saver = tf.train.Saver(restore_vars)
+        saver.restore(self.sess, path)
+
+        if reuse_output:
+
+            ## UPDATE THIS METHOD BASED ON TRANSFER CURRENTLY PAD 0s
+            checkpoint_vars = dict()
+            for var in rearrange_vars:
+                var = var.split(':')[0]
+                npVar = reader.get_tensor(var)
+                if 'bias' in var:
+                    #pad 6 after
+                    finVar = np.pad(npVar, (0,6))
+                else:
+                    # (50,8) need to transform to (50,14)
+                    finVar = np.zeros((50,14))
+                    finVar[:npVar.shape[0], :npVar.shape[1]] = npVar
+
+                checkpoint_vars[var] = tf.Variable(initial_value=finVar, name="output-"+var, dtype=tf.float32)
+
+            newVarsInit = tf.variables_initializer(checkpoint_vars.values())
+            self.sess.run(newVarsInit)
+
+            for v in tf.global_variables():
+                var = v.name.split(':')[0]
+                if var in checkpoint_vars:
+                    self.sess.run(v.assign(checkpoint_vars[var]))
+
+
+        
+
+        
+
+            
+    
