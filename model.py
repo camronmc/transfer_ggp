@@ -20,6 +20,7 @@ class Model:
         self.id_to_move = propnet.id_to_move
         self.num_actions = {role: len(actions)
                             for role, actions in propnet.legal_for.items()}
+        self.genNumActions = self.num_actions['red']
         self.num_inputs = len(propnet.propositions)
         self.replay_buffer = collections.deque(maxlen=REPLAY_SIZE)
         if transfer:
@@ -45,25 +46,13 @@ class Model:
         while size > MIN_PRE_SIZE:
             size = max(MIN_PRE_SIZE, size // 2)
             cur = dense(cur, size, activation=tf.nn.relu)
-        # cur = dense(cur, size, activation=tf.nn.relu)
-        # for i in range(NUM_PRE_LAYERS):
-            # size = max(MIN_PRE_SIZE, size // 2)
-            # cur = dense(cur, size, activation=tf.nn.relu)
 
         self.state_features = cur
         state_size = size
 
         self.outputs = {}
         for role in self.roles:
-            # sizes = [self.num_actions[role]]
-            # for i in range(NUM_POST_LAYERS):
-                # sizes.append(max(MIN_POST_SIZE, sizes[-1] // 2))
-            # sizes.reverse()
-
             cur = self.state_features
-            # for size in sizes[:-1]:
-                # cur = dense(cur, size, activation=tf.nn.relu)
-            # final = sizes[-1]  # one more for expected reward
             size = state_size
             while size * 2 < self.num_actions[role]:
                 size *= 2
@@ -195,7 +184,7 @@ class Model:
         if transfer:
             path = os.path.join('models_transfer', game + 'from' + from_game)
         else:
-            path = os.path.join('models_ad', game)
+            path = os.path.join('models', game)
         pathlib.Path(path).mkdir(parents=True, exist_ok=True)
         save_path = self.saver.save(self.sess, path + '/step-%06d.ckpt' % i)
         print('Saved model to', save_path)
@@ -214,6 +203,23 @@ class Model:
         with tf.variable_scope(var, reuse=True):
             w = tf.get_variable("kernel")
             print(w.eval(self.sess))
+
+    def clear_output_layer(self):
+        print('clearing output layer')
+        biasZeros = np.zeros((self.genNumActions,))
+        kernelZeros = np.zeros((MIN_PRE_SIZE,self.genNumActions))
+
+        bZeros = tf.Variable(initial_value=biasZeros, name="bzeros", dtype=tf.float32)
+        kZeros = tf.Variable(initial_value=kernelZeros, name="kzeros", dtype=tf.float32)
+
+        newVarsInit = tf.variables_initializer([bZeros,kZeros])
+        self.sess.run(newVarsInit)
+
+        for v in tf.global_variables():
+            if v.shape == bZeros.shape:
+                self.sess.run(v.assign(bZeros))
+            elif v.shape == kZeros.shape:
+                self.sess.run(v.assign(kZeros))
 
     def perform_transfer(self, path, reuse_output=False):
         reader = tf.train.NewCheckpointReader(path)
@@ -241,20 +247,41 @@ class Model:
 
         if reuse_output:
 
-            ## UPDATE THIS METHOD BASED ON TRANSFER CURRENTLY PAD 0s
-            checkpoint_vars = dict()
-            for var in rearrange_vars:
-                var = var.split(':')[0]
-                npVar = reader.get_tensor(var)
-                if 'bias' in var:
-                    #pad 6 after
-                    finVar = np.pad(npVar, (0,6))
-                else:
-                    # (50,8) need to transform to (50,14)
-                    finVar = np.zeros((50,14))
-                    finVar[:npVar.shape[0], :npVar.shape[1]] = npVar
+            pad_0 = False
 
-                checkpoint_vars[var] = tf.Variable(initial_value=finVar, name="output-"+var, dtype=tf.float32)
+            if pad_0:
+
+                ## UPDATE THIS METHOD BASED ON TRANSFER CURRENTLY PAD 0s
+                checkpoint_vars = dict()
+                for var in rearrange_vars:
+                    var = var.split(':')[0]
+                    npVar = reader.get_tensor(var)
+                    if 'bias' in var:
+                        #pad 2 after
+                        finVar = np.pad(npVar, (0,2))
+                    else:
+                        # (50,8) need to transform to (50,14)
+                        finVar = np.zeros((50,10))
+                        finVar[:npVar.shape[0], :npVar.shape[1]] = npVar
+
+                    checkpoint_vars[var] = tf.Variable(initial_value=finVar, name="output-"+var, dtype=tf.float32)
+            else:
+                ## pad mean
+                checkpoint_vars = dict()
+                for var in rearrange_vars:
+                    var = var.split(':')[0]
+                    npVar = reader.get_tensor(var)
+                    if 'bias' in var:
+                        #pad 2 after
+                        finVar = np.pad(npVar, (0,2), mode='mean')
+                    else:
+                        # (50,8) need to transform to (50,14)
+                        finVar = np.zeros((50,10))
+
+                        for i in range(50):
+                            finVar[i] = np.pad(npVar[i], (0,2), mode='mean')
+
+                    checkpoint_vars[var] = tf.Variable(initial_value=finVar, name="output-"+var, dtype=tf.float32)
 
             newVarsInit = tf.variables_initializer(checkpoint_vars.values())
             self.sess.run(newVarsInit)

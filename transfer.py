@@ -36,7 +36,7 @@ if  (len(old_prop.roles) == len(new_prop.roles) and
 
     model.load('./models_ad/' + from_game+ '/step-%06d.ckpt' % int(ckpt))
 
-    model.print_var('dense_4')
+    model.clear_output_layer()
     
 else:
 
@@ -45,7 +45,7 @@ else:
 
     model.perform_transfer('./models_ad/' + from_game+ '/step-%06d.ckpt' % int(ckpt), True)
 
-    model.print_var('dense_4')
+    model.clear_output_layer()
 
 ## train
 cur = [None]
@@ -58,7 +58,7 @@ set_pauser({
 
 model.save(to_game,0,transfer=True,from_game=from_game)
 start = time.time()
-for i in range(50000):
+for i in range(10000):
     cur[0] = B1Node(new_prop, data, model=model)
     print('Game number', i)
     start_game = time.time()
