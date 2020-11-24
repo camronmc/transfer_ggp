@@ -1,12 +1,27 @@
 # cython: profile=True
-from .node import node_types, transition_split, Node
-from .constants import (AND, OR, PROPOSITION, TRANSITION, NOT, CONSTANT,
-                        UNKNOWN, init, base, input, legal, goal, terminal,
-                        other)
+from node import node_types, transition_split, Node
+AND = 1
+OR = 2
+PROPOSITION = 3
+TRANSITION = 4
+NOT = 5
+CONSTANT = 6
+UNKNOWN = 7
+CAM=74
+MAX_FAN_OUT_SIZE = 256 * 256
+
+init = "init"
+base = "base"
+input = "input"
+legal = "legal"
+goal = "goal"
+terminal = "terminal"
+other = "other"
 import os
 import importlib
 from collections import defaultdict
-from .persistent_array import PersistentArray
+from persistent_array import PersistentArray
+import time
 
 
 def _split_gdl(gdl):
@@ -30,7 +45,7 @@ def split_gdl(gdl):
     return filter(None, _split_gdl(gdl))
 
 
-def make_propnet(gdl, name):
+def make_propnet(gdl, name): 
     fn = os.path.join('rulesheets', name + '.kif')
     with open(fn, 'w') as f:
         f.write(gdl)
@@ -47,7 +62,7 @@ def convert_to_propnet(filename):
     base = os.path.basename(filename).replace('.kif', '').replace('.gdl', '')
     out_fn = os.path.join('games', base+'.py')
     out_fn = os.path.abspath(out_fn)
-    os.chdir('/home/adrian/ggplib/ggp-base/bin/')
+    os.chdir('/Users/Cameron/Desktop/transfer_ggp/rulesheets')
     os.system('java -cp . -XX:+UseSerialGC -Xmx8G propnet_convert.Convert %s %s' % (filename, out_fn))
     return load_propnet(base)
 
@@ -173,19 +188,46 @@ cdef class Propnet:
     cpdef do_step(self, data, actions=set(), init=False):
 
         actions = {self.legal_to_input[x] for x in actions}
+        start = time.time()
+        ## camdata = dict()
 
         if isinstance(data, PersistentArray):
             datacopy = list(data.values())
             copy2 = list(datacopy)
         else:
             datacopy = data
+        
+        topSortSet = set(self.topsorted)
+
+        if len(topSortSet) != len(self.topsorted):
+            print(len(topSortSet),len(self.topsorted))
+            exit(0)
+        
+        postSet = set(self.posts)
+
+        difftoppost = topSortSet.difference(postSet)
+
+        print(len(topSortSet), "diff len is", len(difftoppost))
 
         for id in self.topsorted:
             if id not in self.posts:
                 datacopy[id] = self.nodes[id].eval(datacopy, init, actions)
 
+            ## camdata[id] = self.nodes[id].eval(datacopy, init, actions)
+
+        print('loop 1  took %.4f seconds' % (time.time() - start))
+        start = time.time()
+
         for id in self.topsorted:
             datacopy[id] = self.nodes[id].eval(datacopy, init, actions)
+
+        print('loop 2 took %.4f seconds' % (time.time() - start))
+        start = time.time()
+
+        ## for id in camdata:
+        ##    if camdata[id] != datacopy[id]:
+        ##        print('problem!', camdata[id], datacopy[id])
+        ##        exit(0)
 
         if isinstance(data, PersistentArray):
             for i, (a, b) in enumerate(zip(datacopy, copy2)):
@@ -193,6 +235,8 @@ cdef class Propnet:
                     data[i] = a
         else:
             data = datacopy
+
+        print('zip took %.4f seconds' % (time.time() - start))
 
     def legal_moves(self, data):
         return (legal for legal in self.legal if data[legal.id])

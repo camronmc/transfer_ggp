@@ -1,3 +1,10 @@
+#!/usr/bin/env python3.7
+
+import sys
+sys.path.insert(1, '/Users/Cameron/Desktop/transfer_ggp')
+
+from model import Model
+
 from mcts import MCTSNode, simulation
 from propnet.propnet import load_propnet
 import time

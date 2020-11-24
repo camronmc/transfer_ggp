@@ -1,5 +1,9 @@
-from .persistent_array import PersistentArray
-from .propnet import load_propnet
+
+import sys
+sys.path.insert(1, '/Users/Cameron/Desktop/transfer_ggp')
+
+from persistent_array import PersistentArray
+from propnet import load_propnet
 import random
 
 
@@ -32,7 +36,7 @@ def run_test_propnet():
         print('STEP')
         d = datas[-1]
         for move in p.legal_moves(d):
-            print(move)
+            print("move is", move)
         if p.is_terminal(d):
             print('terminal')
             print(p.get_scores(d))
@@ -40,13 +44,20 @@ def run_test_propnet():
         p.do_step(d, actions)
         datas.append(d)
     
-    step(['noop', '(drop 1)'])
-    step(['(drop 2)', 'noop'])
-    step(['noop', '(drop 1)'])
-    step(['(drop 2)', 'noop'])
-    step(['noop', '(drop 1)'])
-    step(['(drop 2)', 'noop'])
-    step(['noop', '(drop 1)'])
+    # step(['noop', '(drop 1)'])
+    step([870, 823])
+    # step(['(drop 2)', 'noop'])
+    step([197, 329])
+    # step(['noop', '(drop 1)'])
+    step([870, 823])
+    # step(['(drop 2)', 'noop'])
+    step([197, 329])
+    # step(['noop', '(drop 1)'])
+    step([870, 823])
+    # step(['(drop 2)', 'noop'])
+    step([197, 329])
+    # step(['noop', '(drop 1)'])
+    step([870, 823])
     print('Done?')
     d = datas[-1]
     for move in p.legal_moves(d):

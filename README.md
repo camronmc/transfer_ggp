@@ -1,3 +1,37 @@
+Transfer learning added to the architecture of generalised AlphaZero. Adapted from code provided by Adrian Goldwaser. 
+---
+
+Methods: 
+
+Train generalised AlphaZero (GAZ)
+
+```
+Usage: gaz_train.py <base_game> <train_to>
+```
+Evaluate GAZ
+```
+Usage: gaz_eval.py <base_game> <start> <finish>
+```
+Train transfer agent (single network transfer/apply to mimic networks)
+```
+Usage: transfer_train.py <base_game> <ckpt> <to_game> <mode> <train_to> - mode is 0pad, mean, map or clear
+```
+Evaluate transfer agent (any transfer method)
+```
+"Usage: transfer_eval.py <base_game> <start> <finish> <postfiz/path> <mode> - mode is simple or complex"
+```
+Generate expert buffers for multitask training method
+```
+"Usage: generate_buffer.py <game> <ckpt> <total_rounds>"
+```
+Multitask training method to generate mimic network for multi-network transfers
+```
+all settings in training script
+```
+
+---
+Original README: 
+
 Alpha zero applied to General Game Playing
 ---
 
