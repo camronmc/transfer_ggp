@@ -29,6 +29,18 @@ Multitask training method to generate mimic network for multi-network transfers
 all settings in training script
 ```
 
+Generating propnets
+---
+Propnets must be generated using the external package ggplib and it's dependency k273. These must be run on linux machines. Doc is hidden at this link. 
+
+https://github.com/richemslie/ggplib/tree/master/doc
+
+
+---
+Original README: 
+
+Alpha zero applied to General Game Playing
+
 ---
 Original README: 
 
