@@ -21,6 +21,7 @@ import os
 import importlib
 from collections import defaultdict
 from persistent_array import PersistentArray
+import time
 
 
 def _split_gdl(gdl):
@@ -187,19 +188,46 @@ cdef class Propnet:
     cpdef do_step(self, data, actions=set(), init=False):
 
         actions = {self.legal_to_input[x] for x in actions}
+        start = time.time()
+        ## camdata = dict()
 
         if isinstance(data, PersistentArray):
             datacopy = list(data.values())
             copy2 = list(datacopy)
         else:
             datacopy = data
+        
+        topSortSet = set(self.topsorted)
+
+        if len(topSortSet) != len(self.topsorted):
+            print(len(topSortSet),len(self.topsorted))
+            exit(0)
+        
+        postSet = set(self.posts)
+
+        difftoppost = topSortSet.difference(postSet)
+
+        print(len(topSortSet), "diff len is", len(difftoppost))
 
         for id in self.topsorted:
             if id not in self.posts:
                 datacopy[id] = self.nodes[id].eval(datacopy, init, actions)
 
+            ## camdata[id] = self.nodes[id].eval(datacopy, init, actions)
+
+        print('loop 1  took %.4f seconds' % (time.time() - start))
+        start = time.time()
+
         for id in self.topsorted:
             datacopy[id] = self.nodes[id].eval(datacopy, init, actions)
+
+        print('loop 2 took %.4f seconds' % (time.time() - start))
+        start = time.time()
+
+        ## for id in camdata:
+        ##    if camdata[id] != datacopy[id]:
+        ##        print('problem!', camdata[id], datacopy[id])
+        ##        exit(0)
 
         if isinstance(data, PersistentArray):
             for i, (a, b) in enumerate(zip(datacopy, copy2)):
@@ -207,6 +235,8 @@ cdef class Propnet:
                     data[i] = a
         else:
             data = datacopy
+
+        print('zip took %.4f seconds' % (time.time() - start))
 
     def legal_moves(self, data):
         return (legal for legal in self.legal if data[legal.id])

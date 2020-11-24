@@ -164,11 +164,14 @@ cdef class Proposition:
 
     cpdef eval(self, list data, int init, set actions):
         if self.prop_type == 'init':
+            #print('init')
             return init
         if self.prop_type == input:
+            #print('here')
             return self.id in actions
         if not self.inputs:
             import pdb; pdb.set_trace()
+        #print('general flow', data[self.inputs[0]])
         return data[self.inputs[0]]
 
     def __str__(self):

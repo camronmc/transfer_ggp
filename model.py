@@ -14,15 +14,21 @@ REPLAY_SIZE = 20000
 
 
 class Model:
-    def __init__(self, propnet, create=True, transfer=False, base_dims=None, roles_dim=None):
+    def __init__(self, propnet, create=True, transfer=False, base_dims=None, roles_dim=None, multiNet=False, games=[], replay_buffer=dict()):
+        self.multiNet = multiNet
+        self.games = games
         self.roles = propnet.roles
         self.legal_for = propnet.legal_for
         self.id_to_move = propnet.id_to_move
         self.num_actions = {role: len(actions)
                             for role, actions in propnet.legal_for.items()}
-        self.genNumActions = self.num_actions['red']
+        for role in self.roles:
+            self.genNumActions = self.num_actions[role]
         self.num_inputs = len(propnet.propositions)
-        self.replay_buffer = collections.deque(maxlen=REPLAY_SIZE)
+        if self.multiNet:
+            self.replay_buffer = replay_buffer
+        else: 
+            self.replay_buffer = collections.deque(maxlen=REPLAY_SIZE)
         if transfer:
             self.create_model_transfer(base_dims, roles_dim)
         else:
@@ -126,8 +132,14 @@ class Model:
         self.optimiser = tf.train.AdamOptimizer(0.01)
         self.trainer = self.optimiser.minimize(self.loss)
 
-    def add_sample(self, state, probs, scores):
-        self.replay_buffer.append((state, probs, scores))
+    def add_sample(self, state, probs, scores, game=""):
+        if self.multiNet:
+            if game not in self.games:
+                print("tried to add sample from game not in multi net")
+                exit(0)
+            self.replay_buffer[game].append((state, probs, scores))
+        else:
+            self.replay_buffer.append((state, probs, scores))
 
     def eval(self, state):
         feed_dict = {self.input: [state]}
@@ -155,17 +167,32 @@ class Model:
             for i, pr in probs[role].items():
                 print(self.id_to_move[i].move_gdl, '%.3f' % pr)
 
-    def train(self, epochs=5, batchsize=128):
+    def getBuffer(self):
+        return self.replay_buffer
+
+    def train(self, epochs=5, batchsize=128, game=""):
         # Sample from replay buffer and train
         # if len(replay_buffer) < batchsize:
             # print('Skipping as replay buffer only has', len(replay_buffer), 'items')
         # batchsize = min(batchsize, len(self.replay_buffer))
-        if batchsize > len(self.replay_buffer):
+        bufferLen = 0
+        if self.multiNet:
+            if game not in self.games:
+                print("game was not in games for multinet")
+                exit(0)
+            bufferLen = len(self.replay_buffer[game])
+        else:
+            bufferLen = len(self.replay_buffer)
+
+        if batchsize > bufferLen:
             print('Skipping as replay buffer too small')
             return
         sum_loss = 0
         for i in range(epochs):
-            sample = random.sample(self.replay_buffer, batchsize)
+            if self.multiNet:
+                sample = random.sample(self.replay_buffer[game], batchsize)
+            else:
+                sample = random.sample(self.replay_buffer, batchsize)
             feed_dict = {
                 self.input: [x[0] for x in sample],
             }
@@ -180,11 +207,13 @@ class Model:
             sum_loss += loss
         self.losses.append(sum_loss/epochs)
 
-    def save(self, game, i, transfer=False, from_game=""):
+    def save(self, model_name, i, transfer=False, multiNet=False):
         if transfer:
-            path = os.path.join('models_transfer', game + 'from' + from_game)
+            path = os.path.join('models_transfer', model_name)
+        elif multiNet:
+            path = os.path.join('multiNet', model_name)
         else:
-            path = os.path.join('models', game)
+            path = os.path.join('models', model_name)
         pathlib.Path(path).mkdir(parents=True, exist_ok=True)
         save_path = self.saver.save(self.sess, path + '/step-%06d.ckpt' % i)
         print('Saved model to', save_path)
@@ -221,7 +250,7 @@ class Model:
             elif v.shape == kZeros.shape:
                 self.sess.run(v.assign(kZeros))
 
-    def perform_transfer(self, path, reuse_output=False):
+    def perform_transfer(self, path, reuse_output=False, multiplayer=False, pad_0=False, breakthroughMap = False):
         reader = tf.train.NewCheckpointReader(path)
         saved_shapes = reader.get_variable_to_shape_map()
 
@@ -245,10 +274,29 @@ class Model:
         saver = tf.train.Saver(restore_vars)
         saver.restore(self.sess, path)
 
+        if multiplayer:
+            threepmodel = dict()
+            for shape in saved_shapes:
+                if shape[0:7] == "dense_4":
+                    equiv = "dense_8"
+                    var = equiv+shape[7:]
+                    p1LogitVar = reader.get_tensor(shape)
+                    threepmodel[var] = tf.Variable(initial_value=p1LogitVar, name="output-"+var, dtype=tf.float32)
+                if shape[0:7] == "dense_5":
+                    equiv = "dense_9"
+                    var = equiv+shape[7:]
+                    p1Qvar = reader.get_tensor(shape)
+                    threepmodel[var] = tf.Variable(initial_value=p1Qvar, name="output-"+var, dtype=tf.float32)
+
+            newVarsInit = tf.variables_initializer(threepmodel.values())
+            self.sess.run(newVarsInit)
+
+            for v in tf.global_variables():
+                var = v.name.split(':')[0]
+                if var in threepmodel:
+                    self.sess.run(v.assign(threepmodel[var]))
+
         if reuse_output:
-
-            pad_0 = False
-
             if pad_0:
 
                 ## UPDATE THIS METHOD BASED ON TRANSFER CURRENTLY PAD 0s
@@ -260,11 +308,30 @@ class Model:
                         #pad 2 after
                         finVar = np.pad(npVar, (0,2))
                     else:
-                        # (50,8) need to transform to (50,14)
+                        # (50,8) need to transform to (50,10)
                         finVar = np.zeros((50,10))
                         finVar[:npVar.shape[0], :npVar.shape[1]] = npVar
 
                     checkpoint_vars[var] = tf.Variable(initial_value=finVar, name="output-"+var, dtype=tf.float32)
+            elif breakthroughMap: 
+                checkpoint_vars = dict()
+                for var in rearrange_vars:
+                    var = var.split(':')[0]
+                    npVar = reader.get_tensor(var)
+                    if 'bias' in var:
+                        finVar = np.random.rand(66)
+                        finVar = np.concatenate((npVar[:57], npVar[58:60], npVar[61:63], npVar[64:66], npVar[67:69], npVar[80:81]))
+
+                        
+                    else:
+                        finVar = np.random.rand(50,66)
+                        for i in range(50):
+                            temp = npVar[i]
+                            finVar[i] = np.concatenate((temp[:57], temp[58:60], temp[61:63], temp[64:66], temp[67:69], temp[80:81]))
+                            
+                    checkpoint_vars[var] = tf.Variable(initial_value=finVar, name="output-"+var, dtype=tf.float32)
+
+                
             else:
                 ## pad mean
                 checkpoint_vars = dict()
@@ -275,7 +342,7 @@ class Model:
                         #pad 2 after
                         finVar = np.pad(npVar, (0,2), mode='mean')
                     else:
-                        # (50,8) need to transform to (50,14)
+                        # (50,8) need to transform to (50,10)
                         finVar = np.zeros((50,10))
 
                         for i in range(50):
@@ -287,8 +354,10 @@ class Model:
             self.sess.run(newVarsInit)
 
             for v in tf.global_variables():
+                print(v)
                 var = v.name.split(':')[0]
                 if var in checkpoint_vars:
+                    print('here')
                     self.sess.run(v.assign(checkpoint_vars[var]))
 
 

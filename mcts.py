@@ -1,15 +1,30 @@
 import math
 import importlib
 import random
+import time
 from collections import defaultdict
 
 
 class MCTSNode:
     def __init__(self, propnet, data, actions=None, sum_start=0):
+        print("making new node")
+        currT = time.time()
+
         self.data = data.copy()
+
+        print('copying data took %.4f seconds' % (time.time() - currT))
+        currT= time.time()
+
         self.propnet = propnet
+
+        print('setting propnet took %.4f seconds' % (time.time() - currT))
+        currT= time.time() 
+
         if actions is not None:
             self.propnet.do_step(self.data, actions)
+
+        print('do step took %.4f seconds' % (time.time() - currT))
+        currT= time.time()
 
         self.terminal = False
         if self.propnet.is_terminal(self.data):
@@ -17,9 +32,14 @@ class MCTSNode:
             self.scores = self.propnet.scores(self.data)
             if not self.scores:
                 import pdb; pdb.set_trace()
+        
+        print('terminal check took %.4f seconds' % (time.time() - currT))
+        currT= time.time()
 
         self.C = 2
         self.actions = self.propnet.legal_moves_dict(self.data)
+        print('setting actions took %.4f seconds' % (time.time() - currT))
+        currT= time.time()
         self.children = defaultdict(dict)
         self.children_args = []
         self.win_sums = {}
@@ -31,6 +51,7 @@ class MCTSNode:
             for move in moves:
                 self.win_sums[role][move.id] = sum_start
                 self.move_counts[role][move.id] = 0
+        print('setting counts/scores took %.4f seconds' % (time.time() - currT))
         self.count = 1
 
     def print_node(self):
@@ -71,11 +92,19 @@ class MCTSNode:
         return self.children[ids]
 
     def get_child(self):
+        start = time.time()
+        currT = time.time()
         actions = self.choose_actions()
+        print('gettting actions took %.4f seconds' % (time.time() - currT))
         ids = tuple(actions[role].id for role in self.propnet.roles)
+        currT= time.time()
+        # print('children', self.children)
         if ids in self.children:
             return False, ids, self.children[ids]
+        print('checking kids took %.4f seconds' % (time.time() - currT))
+        currT= time.time()
         self.children[ids] = self.__class__(self.propnet, self.data, set(ids), *self.children_args)
+        print('making new kids actions took %.4f seconds' % (time.time() - currT))
         scores = self.children[ids].get_pred_scores()
         return True, ids, scores
 
@@ -111,6 +140,7 @@ class MCTSNode:
 
 
 def simulation(root):
+    start = time.time()
     stack = []
     stop, ids, child = root.get_child()
     prev = root
@@ -126,6 +156,9 @@ def simulation(root):
         if not stop and child.terminal:
             child, stop = child.scores, True
     scores = child
+    
     for ids, state in stack:
         state.update(ids, scores)
+
+    print('simulation took %.4f seconds' % (time.time() - start))
 

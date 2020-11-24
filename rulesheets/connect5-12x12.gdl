@@ -317,7 +317,7 @@
                 (succ ?y4 ?y3)
                 (true (cell ?x4 ?y4 ?z))
                 (succ ?x4 ?x5)
-                (succ ?y4 ?y5)
+                (succ ?y5 ?y4)
                 (true (cell ?x5 ?y5 ?z))
                 )
  

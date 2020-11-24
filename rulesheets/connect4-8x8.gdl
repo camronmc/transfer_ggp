@@ -1,5 +1,5 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; Connect 4
+;;; Connect 4 - 8x8 
 ;;;
 ;;;
 ;;; modified 2007-06-05 by dhaley: made line rules more efficient
