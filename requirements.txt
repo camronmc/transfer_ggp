@@ -78,7 +78,7 @@ tensorboard<1.15.0,>=1.14.0
 tensorflow==1.14
 termcolor==1.1.0
 tqdm==4.24.0
-urllib3==1.23
+urllib3==1.26.5
 virtualenv==16.0.0
 virtualenv-clone==0.3.0
 virtualenvwrapper==4.8.2
