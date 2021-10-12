@@ -41,7 +41,7 @@ numpy<2.0,>=1.16.4
 oauth==1.0.1
 objgraph==3.4.0
 olefile==0.44
-opencv-python==3.4.2.17
+opencv-python==4.2.0.32
 pbr==4.1.0
 pexpect==4.2.1
 Pillow==5.2.0
