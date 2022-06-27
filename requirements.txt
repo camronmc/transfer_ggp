@@ -65,7 +65,7 @@ pyRFC3339==1.0
 pytz==2018.5
 pyxdg==0.25
 PyYAML>=3.13
-reportlab==3.4.0
+reportlab==3.5.55
 requests<3,>=2.21.0
 requests-cache==0.4.13
 requests-unixsocket==0.1.5
